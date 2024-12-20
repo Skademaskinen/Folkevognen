@@ -9,12 +9,16 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 class App extends ListenerAdapter {
@@ -67,24 +71,46 @@ class App extends ListenerAdapter {
             "Get the next person to folk the vogn, and increment their amount",
             (e) -> {
                 SlashCommandInteractionEvent event = (SlashCommandInteractionEvent)e;
-                Settings settings = new Settings();
-                // check if the year and week have changed, otherwise return last folked person
-                int week = Calendar.getInstance().get(Calendar.WEEK_OF_YEAR);
-                int year = Calendar.getInstance().get(Calendar.YEAR);
-                if (week == settings.lastFolkedWeek && year == settings.lastFolkedYear) {
-                    // no need to folk the vogn
-                    event.reply(settings.lastFolker + " folked the vogn this week!").queue();
-                    return;
-                }
-                Map<String, Integer> folkevognen = settings.folkevognen;
-                // find the name of the person with the lowest count
-                String name = folkevognen.entrySet().stream()
-                    .min((a, b) -> a.getValue() - b.getValue())
-                    .get().getKey();
-                // increment their count
-                folkevognen.put(name, folkevognen.get(name) + 1);
-                settings.write(folkevognen, name);
-                event.reply(name + " is next to folk the vogn!").queue();
+                String folker = getCurrentFolker();
+                event.reply(folker + " is next to folk the vogn!").queue();
+            }
+        ));
+        add(new Interaction (
+            "folkevognen-embed",
+            "Creates an embed with a button to refresh it",
+            (e) -> {
+                SlashCommandInteractionEvent event = (SlashCommandInteractionEvent)e;
+                event.replyEmbeds(buildFolkevognEmbed(getCurrentFolker()))
+                    .addActionRow(
+                        Button.primary("folkevognen-refresh", "Refresh"),
+                        Button.primary("show-folkevognen", "Show folkevognen")
+                    ).queue();
+            }
+        ));
+        add(new Interaction (
+            "folkevognen-refresh",
+            "Refresh the folkevognen embed",
+            (e) -> {
+                ButtonInteractionEvent event = (ButtonInteractionEvent)e;
+                String folker = getCurrentFolker();
+                event.editMessageEmbeds(buildFolkevognEmbed(folker))
+                    .setActionRow(
+                        Button.primary("folkevognen-refresh", "Refresh"),
+                        Button.primary("show-folkevognen", "Show folkevognen")
+                    ).queue();
+            }
+        ));
+        add(new Interaction (
+            "show-folkevognen",
+            "Show the folkevognen",
+            (e) -> {
+            ButtonInteractionEvent event = (ButtonInteractionEvent)e;
+            Settings settings = new Settings();
+            StringBuilder folkevognen = new StringBuilder();
+            settings.folkevognen.forEach((name, count) -> {
+                folkevognen.append(name + ": " + count + "\n");
+            });
+            event.reply(folkevognen.toString()).setEphemeral(true).queue();
             }
         ));
     }};
@@ -114,5 +140,38 @@ class App extends ListenerAdapter {
                 interaction.function.run(event);
             }
         }
+    }
+    @Override
+    public void onButtonInteraction(ButtonInteractionEvent event) {
+        logger.info("Received button: " + event.getComponentId());
+        for (Interaction interaction : interactions) {
+            if (event.getComponentId().equals(interaction.name)) {
+            interaction.function.run(event);
+            }
+        }
+    }
+
+    static MessageEmbed buildFolkevognEmbed(String current) {
+        EmbedBuilder builder = new EmbedBuilder();
+        builder.setTitle("Folkevognen");
+        builder.setDescription("Click the button to refresh");
+        builder.addField("This weeks folker", current, false);
+        return builder.build();
+    }
+    static String getCurrentFolker() {
+        Settings settings = new Settings();
+        int week = Calendar.getInstance().get(Calendar.WEEK_OF_YEAR);
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+        if (week == settings.lastFolkedWeek && year == settings.lastFolkedYear) {
+            return settings.lastFolker;
+        }
+        Map<String, Integer> folkevognen = settings.folkevognen;
+        String name = folkevognen.entrySet().stream()
+            .min((a, b) -> a.getValue() - b.getValue())
+            .get().getKey();
+        folkevognen.put(name, folkevognen.get(name) + 1);
+        settings.write(folkevognen, name);
+        return name;
+
     }
 }
