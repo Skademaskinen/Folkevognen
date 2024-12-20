@@ -28,13 +28,13 @@
 
                 installPhase = ''
                     mkdir -p $out/{lib,share}/${name}
-                    cp ./app/build/libs/app-all.jar $out/lib/${name}/rp-utils.jar
+                    cp ./app/build/libs/app-all.jar $out/lib/${name}/folkevognen.jar
                     cp -r $src/* $out/share/${name}
                 '';
             };
             default = pkgs.writeScriptBin "folkevognen" ''
                 #!${pkgs.bash}/bin/bash
-                ${pkgs.jdk21}/bin/java --enable-preview -jar ${source}/lib/rp-utils/rp-utils.jar $@
+                ${pkgs.jdk21}/bin/java --enable-preview -jar ${source}/lib/folkevognen/folkevognen.jar $@
             '';
         };
     };
