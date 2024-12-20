@@ -12,17 +12,42 @@ import org.slf4j.LoggerFactory;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 class App extends ListenerAdapter {
     public static JDA jda;
+    static List<LayoutComponent> getActionRows(Guild guild){
+        return new ArrayList<>(){{
+            StringSelectMenu.Builder menu = StringSelectMenu.create("select-folkevognen");
+            menu.setPlaceholder("Override this weeks folker");
+            Settings settings = new Settings();
+            settings.folkevognen.forEach((id, count) -> {
+                try{
+                    menu.addOption(guild.retrieveMemberById(id).complete().getEffectiveName(), id);
+                } catch (Exception e) {
+                    logger.error("Failed to retrieve member with id " + id);
+                }
+            });
+            add(ActionRow.of(menu.build()));
+            add(ActionRow.of(
+                Button.primary("refresh-folkevognen", "Refresh"),
+                Button.primary("show-folkevognen", "Show folkevognen"),
+                Button.danger("revert-folkevognen", "Revert")
+            ));
+        }};
+    }
     static List<Interaction> interactions = new ArrayList<Interaction>(){{
         add(new Interaction (
             "ping", 
@@ -81,25 +106,18 @@ class App extends ListenerAdapter {
             (e) -> {
                 SlashCommandInteractionEvent event = (SlashCommandInteractionEvent)e;
                 event.replyEmbeds(buildFolkevognEmbed(getCurrentFolker()))
-                    .addActionRow(
-                        Button.primary("folkevognen-refresh", "Refresh"),
-                        Button.primary("show-folkevognen", "Show folkevognen"),
-                        Button.danger("revert-folkevognen", "Revert")
-                    ).queue();
+                    .addComponents(getActionRows(event.getGuild()))
+                    .queue();
             }
         ));
         add(new Interaction (
-            "folkevognen-refresh",
+            "refresh-folkevognen",
             "Refresh the folkevognen embed",
             (e) -> {
                 ButtonInteractionEvent event = (ButtonInteractionEvent)e;
                 String folker = getCurrentFolker();
                 event.editMessageEmbeds(buildFolkevognEmbed(folker))
-                    .setActionRow(
-                        Button.primary("folkevognen-refresh", "Refresh"),
-                        Button.primary("show-folkevognen", "Show folkevognen"),
-                        Button.danger("revert-folkevognen", "Revert")
-                    ).queue();
+                    .queue();
             }
         ));
         add(new Interaction (
@@ -109,8 +127,8 @@ class App extends ListenerAdapter {
             ButtonInteractionEvent event = (ButtonInteractionEvent)e;
             Settings settings = new Settings();
             StringBuilder folkevognen = new StringBuilder();
-            settings.folkevognen.forEach((name, count) -> {
-                folkevognen.append(name + ": " + count + "\n");
+            settings.folkevognen.forEach((id, count) -> {
+                folkevognen.append(event.getJDA().retrieveUserById(id).complete().getAsMention() + ": " + count + "\n");
             });
             event.reply(folkevognen.toString()).setEphemeral(true).queue();
             }
@@ -127,13 +145,38 @@ class App extends ListenerAdapter {
                 settings.lastFolkedYear -= 1;
                 settings.write();
                 event.editMessageEmbeds(buildFolkevognEmbed("REVERTED"))
-                    .setActionRow(
-                        Button.primary("folkevognen-refresh", "Refresh"),
-                        Button.primary("show-folkevognen", "Show folkevognen"),
-                        Button.danger("revert-folkevognen", "Revert")
-                    ).queue();
+                    .queue();
                 event.reply("Reverted the folkevognen").setEphemeral(true).queue();
             }
+        ));
+        add(new Interaction (
+            "select-folkevognen",
+            "Select a folker",
+            (e) -> {
+            StringSelectInteractionEvent event = (StringSelectInteractionEvent)e;
+            String folker = event.getValues().get(0);
+            // decrement the previous folker and increment the new one
+            Settings settings = new Settings();
+            settings.folkevognen.put(settings.lastFolker, settings.folkevognen.get(settings.lastFolker) - 1);
+            settings.folkevognen.put(folker, settings.folkevognen.get(folker) + 1);
+            settings.lastFolker = folker;
+            settings.write();
+            event.editMessageEmbeds(buildFolkevognEmbed(folker))
+                .queue();
+            }
+        ));
+        add(new Interaction (
+            "remove",
+            "removes a message a bot has sent by id",
+            (e) -> {
+                SlashCommandInteractionEvent event = (SlashCommandInteractionEvent)e;
+                String id = event.getOption("id").getAsString();
+                event.getChannel().deleteMessageById(id).queue();
+                event.reply("Deleted message with id " + id).setEphemeral(true).queue();
+            },
+            new ArrayList<>(){{
+                add(new OptionData(OptionType.STRING, "id", "The id of the message to remove", true));
+            }}
         ));
     }};
     private static Logger logger = LoggerFactory.getLogger(App.class);
@@ -173,11 +216,23 @@ class App extends ListenerAdapter {
         }
     }
 
+    @Override
+    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        logger.info("Received select: " + event.getComponentId());
+        for (Interaction interaction : interactions) {
+            if (event.getComponentId().equals(interaction.name)) {
+                interaction.function.run(event);
+            }
+        }
+    }
+
     static MessageEmbed buildFolkevognEmbed(String current) {
+        String image = jda.getSelfUser().getEffectiveAvatarUrl();
         EmbedBuilder builder = new EmbedBuilder();
+        builder.setThumbnail(image);
         builder.setTitle("Folkevognen");
         builder.setDescription("Click the button to refresh");
-        builder.addField("This weeks folker", current, false);
+        builder.addField("This weeks folker", jda.retrieveUserById(current).complete().getAsMention(), false);
         return builder.build();
     }
     static String getCurrentFolker() {
