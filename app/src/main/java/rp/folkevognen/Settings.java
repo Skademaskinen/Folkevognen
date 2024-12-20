@@ -13,11 +13,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 class Settings {
-    final public String token;
-    final public Map<String, Integer> folkevognen;
-    final public int lastFolkedWeek;
-    final public int lastFolkedYear;
-    final public String lastFolker;
+    public String token;
+    public Map<String, Integer> folkevognen;
+    public int lastFolkedWeek;
+    public int lastFolkedYear;
+    public String lastFolker;
 
     public Settings() {
         String path = "settings.json";
@@ -59,17 +59,49 @@ class Settings {
         folkevognen = folkevognenVal;
     }
 
+    public void write() {
+        String path = "settings.json";
+        File file = new File(path);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+                FileWriter writer = new FileWriter(file);
+                writer.write("{\n}");
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            JSONObject obj = new JSONObject(new String(Files.readAllBytes(Paths.get(file.toURI()))));
+            obj.put("lastFolkedWeek", lastFolkedWeek);
+            obj.put("lastFolkedYear", lastFolkedYear);
+            obj.put("lastFolker", lastFolker);
+            JSONObject folkevognenObj = new JSONObject();
+            for (String key : folkevognen.keySet()) {
+            folkevognenObj.put(key, folkevognen.get(key));
+            }
+            obj.put("folkevognen", folkevognenObj);
+            FileWriter writer = new FileWriter(file);
+            writer.write(obj.toString());
+            writer.close();
+        } catch(IOException | JSONException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
     public void write(Map<String, Integer> folkevognen, String lastFolker) {
         String path = "settings.json";
         File file = new File(path);
         if (!file.exists()) {
             try {
-            file.createNewFile();
-            FileWriter writer = new FileWriter(file);
-            writer.write("{\n}");
-            writer.close();
+                file.createNewFile();
+                FileWriter writer = new FileWriter(file);
+                writer.write("{\n}");
+                writer.close();
             } catch (IOException e) {
-            e.printStackTrace();
+                e.printStackTrace();
             }
         }
         try {

@@ -83,7 +83,8 @@ class App extends ListenerAdapter {
                 event.replyEmbeds(buildFolkevognEmbed(getCurrentFolker()))
                     .addActionRow(
                         Button.primary("folkevognen-refresh", "Refresh"),
-                        Button.primary("show-folkevognen", "Show folkevognen")
+                        Button.primary("show-folkevognen", "Show folkevognen"),
+                        Button.danger("revert-folkevognen", "Revert")
                     ).queue();
             }
         ));
@@ -96,7 +97,8 @@ class App extends ListenerAdapter {
                 event.editMessageEmbeds(buildFolkevognEmbed(folker))
                     .setActionRow(
                         Button.primary("folkevognen-refresh", "Refresh"),
-                        Button.primary("show-folkevognen", "Show folkevognen")
+                        Button.primary("show-folkevognen", "Show folkevognen"),
+                        Button.danger("revert-folkevognen", "Revert")
                     ).queue();
             }
         ));
@@ -111,6 +113,26 @@ class App extends ListenerAdapter {
                 folkevognen.append(name + ": " + count + "\n");
             });
             event.reply(folkevognen.toString()).setEphemeral(true).queue();
+            }
+        ));
+        add(new Interaction (
+            "revert-folkevognen",
+            "Revert the folkevognen to the previous state",
+            (e) -> {
+                ButtonInteractionEvent event = (ButtonInteractionEvent)e;
+                Settings settings = new Settings();
+                String folkerToBeReverted = settings.lastFolker;
+                settings.folkevognen.put(folkerToBeReverted, settings.folkevognen.get(folkerToBeReverted) - 1);
+                settings.lastFolkedWeek -= 1;
+                settings.lastFolkedYear -= 1;
+                settings.write();
+                event.editMessageEmbeds(buildFolkevognEmbed("REVERTED"))
+                    .setActionRow(
+                        Button.primary("folkevognen-refresh", "Refresh"),
+                        Button.primary("show-folkevognen", "Show folkevognen"),
+                        Button.danger("revert-folkevognen", "Revert")
+                    ).queue();
+                event.reply("Reverted the folkevognen").setEphemeral(true).queue();
             }
         ));
     }};
