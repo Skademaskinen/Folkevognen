@@ -18,9 +18,9 @@
         };
         packages.${system} = rec {
             source = gradle2nix.builders.x86_64-linux.buildGradlePackage rec {
-                name = "rp-utils";
+                name = "folkevognen";
                 version = "1.0";
-                pname = "wordcount";
+                pname = "folkevognen";
                 lockFile = ./gradle.lock;
                 src = ./.;
                 gradleBuildFlags = ["build -x test"];
@@ -32,7 +32,7 @@
                     cp -r $src/* $out/share/${name}
                 '';
             };
-            default = pkgs.writeScriptBin "rp-utils.sh" ''
+            default = pkgs.writeScriptBin "folkevognen" ''
                 #!${pkgs.bash}/bin/bash
                 ${pkgs.jdk21}/bin/java --enable-preview -jar ${source}/lib/rp-utils/rp-utils.jar $@
             '';
