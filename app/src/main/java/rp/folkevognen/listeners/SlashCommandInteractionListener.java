@@ -7,7 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -132,6 +134,30 @@ public class SlashCommandInteractionListener extends ListenerAdapter {
             EmbedBuilder builder = new EmbedBuilder();
             builder.setTitle("Selects");
             for (Interaction<StringSelectInteractionEvent> interaction : StringSelectInteractionListener.interactions) {
+                builder.addField(interaction.name, interaction.description, false);
+            }
+            e.replyEmbeds(builder.build()).setEphemeral(true).queue();
+            }
+        ));
+        add(new Interaction<>(
+            "help-usercontext",
+            "Show a list of user context menus",
+            e -> {
+                EmbedBuilder builder = new EmbedBuilder();
+                builder.setTitle("User context menus");
+                for (Interaction<UserContextInteractionEvent> interaction : UserContextInteractionListener.interactions) {
+                    builder.addField(interaction.name, interaction.description, false);
+                }
+            }
+        ));
+
+        add(new Interaction<>(
+            "help-messagecontext",
+            "Show a list of message context menus",
+            e -> {
+            EmbedBuilder builder = new EmbedBuilder();
+            builder.setTitle("Message context menus");
+            for (Interaction<MessageContextInteractionEvent> interaction : MessageContextInteractionListener.interactions) {
                 builder.addField(interaction.name, interaction.description, false);
             }
             e.replyEmbeds(builder.build()).setEphemeral(true).queue();

@@ -32,6 +32,9 @@ public class StringSelectInteractionListener extends ListenerAdapter {
                 String folker = e.getValues().get(0);
                 // decrement the previous folker and increment the new one
                 Settings settings = new Settings();
+                if(settings.folkevognen.get(folker) == null){
+                    settings.folkevognen.put(folker, 0);
+                }
                 settings.folkevognen.put(settings.lastFolker, settings.folkevognen.get(settings.lastFolker) - 1);
                 settings.folkevognen.put(folker, settings.folkevognen.get(folker) + 1);
                 settings.lastFolker = folker;

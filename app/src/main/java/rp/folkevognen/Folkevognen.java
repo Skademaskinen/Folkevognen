@@ -48,24 +48,29 @@ public class Folkevognen {
         String name = folkevognen.entrySet().stream()
             .min((a, b) -> a.getValue() - b.getValue())
             .get().getKey();
+        settings.lastFolker = name;
         folkevognen.put(name, folkevognen.get(name) + 1);
-        settings.write(folkevognen, name);
+        settings.write(true);
         return name;
 
     }
     public static List<LayoutComponent> getActionRows(Guild guild){
         return new ArrayList<>(){{
-            StringSelectMenu.Builder menu = StringSelectMenu.create("select-folkevognen");
-            menu.setPlaceholder("Override this weeks folker");
-            Settings settings = new Settings();
-            settings.folkevognen.forEach((id, count) -> {
-                try{
-                    menu.addOption(guild.retrieveMemberById(id).complete().getEffectiveName(), id);
-                } catch (Exception e) {
-                    logger.error("Failed to retrieve member with id " + id);
-                }
-            });
-            add(ActionRow.of(menu.build()));
+            try {
+                StringSelectMenu.Builder menu = StringSelectMenu.create("select-folkevognen");
+                menu.setPlaceholder("Override this weeks folker");
+                Settings settings = new Settings();
+                settings.folkevognen.forEach((id, count) -> {
+                    try{
+                        menu.addOption(guild.retrieveMemberById(id).complete().getEffectiveName(), id);
+                    } catch (Exception e) {
+                        logger.error("Failed to retrieve member with id " + id);
+                    }
+                });
+                add(ActionRow.of(menu.build()));
+            } catch (Exception e) {
+                logger.error("Failed to create select menu");
+            }
             add(ActionRow.of(
                 Button.primary("refresh-folkevognen", "Refresh"),
                 Button.primary("show-folkevognen", "Show folkevognen"),
