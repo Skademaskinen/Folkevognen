@@ -12,7 +12,7 @@ import java.util.Map;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-class Settings {
+public class Settings {
     public String token;
     public Map<String, Integer> folkevognen;
     public int lastFolkedWeek;
