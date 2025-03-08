@@ -68,6 +68,15 @@ public class ButtonInteractionListener extends ListenerAdapter {
                     .queue();
             }
         ));
+        add(new Interaction<>(
+            "ping-folkevognen",
+            "Ping the current folker",
+            e -> {
+                var currentFolker = Folkevognen.getCurrentFolker();
+                var ping = App.jda.retrieveUserById(currentFolker).complete().getAsMention();
+                e.reply(ping + " Folker vognen idag!!!").queue();
+            }
+        ));
     }};
 
 }
