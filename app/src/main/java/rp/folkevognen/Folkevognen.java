@@ -74,7 +74,8 @@ public class Folkevognen {
             add(ActionRow.of(
                 Button.primary("refresh-folkevognen", "Refresh"),
                 Button.primary("show-folkevognen", "Show folkevognen"),
-                Button.danger("revert-folkevognen", "Revert")
+                Button.danger("revert-folkevognen", "Revert"),
+                Button.success("ping-folkevognen", "Ping folker")
             ));
         }};
     }
